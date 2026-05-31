@@ -1,0 +1,42 @@
+#!/bin/bash
+
+echo "--- Starting Universal Puchi Zsh Setup ---"
+
+# 1. Environment Detection
+if [ -d "/data/data/com.termux/files/usr" ]; then
+    INSTALL_CMD="pkg install -y"
+    ZSH_PATH="/data/data/com.termux/files/usr/bin/zsh"
+else
+    INSTALL_CMD="sudo apt-get install -y"
+    ZSH_PATH="/usr/bin/zsh"
+fi
+
+# 2. Install Zsh
+echo "Installing Zsh..."
+$INSTALL_CMD zsh curl git
+
+# 3. Install Oh My Zsh (if not exists)
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+    echo "Installing Oh My Zsh..."
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+fi
+
+# 4. Install Prediction Plugins (Autosuggestions & Syntax Highlighting)
+ZSH_CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}
+
+echo "Installing Zsh Plugins..."
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
+    git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+fi
+
+if [ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
+fi
+
+# 5. Update .zshrc to enable plugins
+if [ -f "$HOME/.zshrc" ]; then
+    sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/g' "$HOME/.zshrc"
+fi
+
+echo "--- Puchi Zsh Setup Complete ---"
+echo "Restart your terminal or run 'zsh' to start using it."
