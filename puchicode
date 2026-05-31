@@ -19,15 +19,12 @@ fi
 echo "Installing essential packages..."
 $UPDATE_CMD
 if [ "$IS_TERMUX" = true ]; then
-    $INSTALL_CMD git tmux tur-repo zsh tailscale rustdesk-server
+    $INSTALL_CMD git tmux tur-repo zsh tailscale rustdesk-server python termux-api
 else
-    $INSTALL_CMD git tmux zsh curl
-    # Tailscale installation for standard Linux
+    $INSTALL_CMD git tmux zsh curl python3
     if ! command -v tailscale &> /dev/null; then
         curl -fsSL https://tailscale.com/install.sh | sh
     fi
-    # Note: RustDesk server on Linux usually requires downloading the .deb or binary
-    # For now, we focus on the tools and dotfiles.
 fi
 
 # 3. Setup Tailscale
@@ -38,22 +35,28 @@ if [ "$IS_TERMUX" = true ]; then
         sleep 2
     fi
 else
-    # Standard Linux uses systemd
     sudo systemctl enable --now tailscaled
 fi
 
-# 4. Setup RustDesk Server in Tmux
-echo "Configuring RustDesk Server..."
-if command -v hbbs &> /dev/null; then
-    if ! tmux has-session -t rustdesk 2>/dev/null; then
-        tmux new-session -s rustdesk -n 'hbbs' -d
+# 4. Setup RustDesk Server & Status API in Tmux
+echo "Configuring Services in Tmux..."
+if ! tmux has-session -t rustdesk 2>/dev/null; then
+    tmux new-session -s rustdesk -n 'hbbs' -d
+    if command -v hbbs &> /dev/null; then
         tmux send-keys -t rustdesk:0 "cd ~/rustdesk-server && ./hbbs -p 31116" C-m
-        tmux new-window -t rustdesk -n 'hbbr'
-        tmux send-keys -t rustdesk:1 "cd ~/rustdesk-server && ./hbbr -p 31117" C-m
-        echo "RustDesk server started in tmux session 'rustdesk'"
     fi
-else
-    echo "RustDesk server binary not found. Skipping server start."
+    
+    tmux new-window -t rustdesk -n 'hbbr'
+    if command -v hbbr &> /dev/null; then
+        tmux send-keys -t rustdesk:1 "cd ~/rustdesk-server && ./hbbr -p 31117" C-m
+    fi
+
+    # Start Status API
+    tmux new-window -t rustdesk -n 'api'
+    if [ -f "$HOME/puchi_api.py" ]; then
+        tmux send-keys -t rustdesk:2 "python ~/puchi_api.py" C-m
+    fi
+    echo "Services started in tmux session 'rustdesk'"
 fi
 
 # 5. Dotfiles Management
@@ -73,5 +76,10 @@ echo "Applying symlinks..."
 ln -sf $HOME/dotfiles/.zshrc $HOME/.zshrc
 ln -sf $HOME/dotfiles/.tmux.conf $HOME/.tmux.conf
 
+# 7. Notify Completion
+if command -v puchinotify &> /dev/null; then
+    puchinotify "Puchi System Online on $(hostname)!"
+fi
+
 echo "--- Puchi Code Execution Complete ---"
-echo "You can now run 'tmux attach -t rustdesk' to see your server (if installed)."
+echo "You can now run 'tmux attach -t rustdesk' to see your servers."
