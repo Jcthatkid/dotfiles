@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# A unique topic for your notifications
+TOPIC="puchi_jcthatkid_$(hostname)"
+
+MESSAGE=$1
+if [ -z "$MESSAGE" ]; then
+    MESSAGE="Puchi Alert: No message provided."
+fi
+
+echo "Sending notification to topic: $TOPIC"
+
+# Send to ntfy.sh (You can install the ntfy app on your phone/PC to receive these)
+curl -d "$MESSAGE" "ntfy.sh/$TOPIC"
+
+# Also send a local Android notification if on Termux
+if command -v termux-notification &> /dev/null; then
+    termux-notification --title "Puchi System" --content "$MESSAGE"
+fi
