@@ -1,31 +1,62 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/bin/bash
 
-echo "--- Starting Puchi Code Setup ---"
+echo "--- Starting Universal Puchi Code Setup ---"
 
-# 1. Update and install basic packages
-echo "Checking essential packages..."
-pkg update && pkg upgrade -y
-pkg install -y git tmux tur-repo zsh
-pkg install -y tailscale rustdesk-server
+# 1. Environment Detection
+if [ -d "/data/data/com.termux/files/usr" ]; then
+    IS_TERMUX=true
+    INSTALL_CMD="pkg install -y"
+    UPDATE_CMD="pkg update && pkg upgrade -y"
+    echo "Environment: Termux detected"
+else
+    IS_TERMUX=false
+    INSTALL_CMD="sudo apt-get install -y"
+    UPDATE_CMD="sudo apt-get update && sudo apt-get upgrade -y"
+    echo "Environment: Linux/WSL detected"
+fi
 
-# 2. Setup Tailscale (Userspace mode for Android)
+# 2. Update and install basic packages
+echo "Installing essential packages..."
+$UPDATE_CMD
+if [ "$IS_TERMUX" = true ]; then
+    $INSTALL_CMD git tmux tur-repo zsh tailscale rustdesk-server
+else
+    $INSTALL_CMD git tmux zsh curl
+    # Tailscale installation for standard Linux
+    if ! command -v tailscale &> /dev/null; then
+        curl -fsSL https://tailscale.com/install.sh | sh
+    fi
+    # Note: RustDesk server on Linux usually requires downloading the .deb or binary
+    # For now, we focus on the tools and dotfiles.
+fi
+
+# 3. Setup Tailscale
 echo "Setting up Tailscale..."
-if ! pgrep tailscaled > /dev/null; then
-    nohup tailscaled --tun=userspace-networking --socket=$HOME/tailscaled.sock --state=$HOME/tailscale/tailscaled.state --port=41641 > $HOME/tailscaled.log 2>&1 &
-    sleep 2
+if [ "$IS_TERMUX" = true ]; then
+    if ! pgrep tailscaled > /dev/null; then
+        nohup tailscaled --tun=userspace-networking --socket=$HOME/tailscaled.sock --state=$HOME/tailscale/tailscaled.state --port=41641 > $HOME/tailscaled.log 2>&1 &
+        sleep 2
+    fi
+else
+    # Standard Linux uses systemd
+    sudo systemctl enable --now tailscaled
 fi
 
-# 3. Setup RustDesk Server in Tmux
+# 4. Setup RustDesk Server in Tmux
 echo "Configuring RustDesk Server..."
-if ! tmux has-session -t rustdesk 2>/dev/null; then
-    tmux new-session -s rustdesk -n 'hbbs' -d
-    tmux send-keys -t rustdesk:0 "cd ~/rustdesk-server && ./hbbs -p 31116" C-m
-    tmux new-window -t rustdesk -n 'hbbr'
-    tmux send-keys -t rustdesk:1 "cd ~/rustdesk-server && ./hbbr -p 31117" C-m
-    echo "RustDesk server started in tmux session 'rustdesk'"
+if command -v hbbs &> /dev/null; then
+    if ! tmux has-session -t rustdesk 2>/dev/null; then
+        tmux new-session -s rustdesk -n 'hbbs' -d
+        tmux send-keys -t rustdesk:0 "cd ~/rustdesk-server && ./hbbs -p 31116" C-m
+        tmux new-window -t rustdesk -n 'hbbr'
+        tmux send-keys -t rustdesk:1 "cd ~/rustdesk-server && ./hbbr -p 31117" C-m
+        echo "RustDesk server started in tmux session 'rustdesk'"
+    fi
+else
+    echo "RustDesk server binary not found. Skipping server start."
 fi
 
-# 4. Dotfiles Management
+# 5. Dotfiles Management
 if [ ! -d "$HOME/dotfiles" ]; then
     echo "Cloning dotfiles repository..."
     git clone https://github.com/Jcthatkid/dotfiles.git $HOME/dotfiles
@@ -33,15 +64,14 @@ if [ ! -d "$HOME/dotfiles" ]; then
 else
     echo "Updating dotfiles..."
     cd $HOME/dotfiles
-    # Ensure tracking is set
     git branch --set-upstream-to=origin/main main 2>/dev/null
     git pull
 fi
 
-# 5. Apply Symlinks
+# 6. Apply Symlinks
 echo "Applying symlinks..."
 ln -sf $HOME/dotfiles/.zshrc $HOME/.zshrc
 ln -sf $HOME/dotfiles/.tmux.conf $HOME/.tmux.conf
 
 echo "--- Puchi Code Execution Complete ---"
-echo "You can now run 'tmux attach -t rustdesk' to see your server."
+echo "You can now run 'tmux attach -t rustdesk' to see your server (if installed)."
