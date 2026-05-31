@@ -1,0 +1,18 @@
+#!/bin/bash
+
+echo "--- Starting Puchi Dev Setup ---"
+
+# Environment Detection
+if [ -d "/data/data/com.termux/files/usr" ]; then
+    INSTALL_CMD="pkg install -y"
+    echo "Environment: Termux"
+else
+    INSTALL_CMD="sudo apt-get install -y"
+    echo "Environment: Linux/WSL"
+fi
+
+echo "Installing Development Tools..."
+$INSTALL_CMD python nodejs clang make build-essential
+$INSTALL_CMD vim htop wget curl
+
+echo "--- Puchi Dev Setup Complete ---"
