@@ -5,7 +5,8 @@ echo "--- Starting Puchi Code Setup ---"
 # 1. Update and install basic packages
 echo "Checking essential packages..."
 pkg update && pkg upgrade -y
-pkg install -y git tmux tailscale nmap rustdesk-server zsh
+pkg install -y git tmux tur-repo zsh
+pkg install -y tailscale rustdesk-server
 
 # 2. Setup Tailscale (Userspace mode for Android)
 echo "Setting up Tailscale..."
@@ -27,11 +28,14 @@ fi
 # 4. Dotfiles Management
 if [ ! -d "$HOME/dotfiles" ]; then
     echo "Cloning dotfiles repository..."
-    # Replace the URL below with your actual repository when ready
     git clone https://github.com/Jcthatkid/dotfiles.git $HOME/dotfiles
+    cd $HOME/dotfiles && git branch --set-upstream-to=origin/main main
 else
     echo "Updating dotfiles..."
-    cd $HOME/dotfiles && git pull
+    cd $HOME/dotfiles
+    # Ensure tracking is set
+    git branch --set-upstream-to=origin/main main 2>/dev/null
+    git pull
 fi
 
 # 5. Apply Symlinks
