@@ -1,0 +1,43 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+echo "--- Starting Puchi Code Setup ---"
+
+# 1. Update and install basic packages
+echo "Checking essential packages..."
+pkg update && pkg upgrade -y
+pkg install -y git tmux tailscale nmap rustdesk-server zsh
+
+# 2. Setup Tailscale (Userspace mode for Android)
+echo "Setting up Tailscale..."
+if ! pgrep tailscaled > /dev/null; then
+    nohup tailscaled --tun=userspace-networking --socket=$HOME/tailscaled.sock --state=$HOME/tailscale/tailscaled.state --port=41641 > $HOME/tailscaled.log 2>&1 &
+    sleep 2
+fi
+
+# 3. Setup RustDesk Server in Tmux
+echo "Configuring RustDesk Server..."
+if ! tmux has-session -t rustdesk 2>/dev/null; then
+    tmux new-session -s rustdesk -n 'hbbs' -d
+    tmux send-keys -t rustdesk:0 "cd ~/rustdesk-server && ./hbbs -p 31116" C-m
+    tmux new-window -t rustdesk -n 'hbbr'
+    tmux send-keys -t rustdesk:1 "cd ~/rustdesk-server && ./hbbr -p 31117" C-m
+    echo "RustDesk server started in tmux session 'rustdesk'"
+fi
+
+# 4. Dotfiles Management
+if [ ! -d "$HOME/dotfiles" ]; then
+    echo "Cloning dotfiles repository..."
+    # Replace the URL below with your actual repository when ready
+    git clone https://github.com/Jcthatkid/dotfiles.git $HOME/dotfiles
+else
+    echo "Updating dotfiles..."
+    cd $HOME/dotfiles && git pull
+fi
+
+# 5. Apply Symlinks
+echo "Applying symlinks..."
+ln -sf $HOME/dotfiles/.zshrc $HOME/.zshrc
+ln -sf $HOME/dotfiles/.tmux.conf $HOME/.tmux.conf
+
+echo "--- Puchi Code Execution Complete ---"
+echo "You can now run 'tmux attach -t rustdesk' to see your server."
