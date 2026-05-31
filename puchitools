@@ -1,0 +1,45 @@
+#!/bin/bash
+
+echo "--- Starting Universal Puchi Tools Setup ---"
+
+# 1. Environment Detection
+if [ -d "/data/data/com.termux/files/usr" ]; then
+    INSTALL_CMD="pkg install -y"
+    IS_TERMUX=true
+    echo "Environment: Termux"
+else
+    INSTALL_CMD="sudo apt-get install -y"
+    IS_TERMUX=false
+    echo "Environment: Linux/WSL"
+fi
+
+# 2. Install Tools
+echo "Installing modern CLI tools..."
+$INSTALL_CMD fzf bat lsd btop ripgrep ncdu gh
+
+# 3. Setup Aliases in .zshrc
+ZSHRC="$HOME/.zshrc"
+if [ -f "$ZSHRC" ]; then
+    echo "Adding helpful aliases to .zshrc..."
+    
+    # Function to add alias if it doesn't exist
+    add_alias() {
+        if ! grep -q "alias $1=" "$ZSHRC"; then
+            echo "alias $1='$2'" >> "$ZSHRC"
+        fi
+    }
+
+    add_alias "cat" "bat"
+    # Ubuntu/Debian calls it batcat
+    if ! [ "$IS_TERMUX" = true ] && command -v batcat &> /dev/null; then
+        sed -i "s/alias cat='bat'/alias cat='batcat'/g" "$ZSHRC"
+    fi
+
+    add_alias "ls" "lsd"
+    add_alias "top" "btop"
+    add_alias "grep" "rg"
+    add_alias "du" "ncdu"
+fi
+
+echo "--- Puchi Tools Setup Complete ---"
+echo "Restart your terminal or run 'source ~/.zshrc' to use the new tools!"
